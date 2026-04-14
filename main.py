@@ -6,12 +6,10 @@ from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 from typing import Optional
-
-llm = init_chat_model(
-    model="ollama:llama3", #"anthropic:claude-3-5-latest",
-    max_tokens=1000,
-    temperature=0.3
-)
+from moderations import moderate_message
+from fastapi import FastAPI
+from context_handler import extract_user_info, get_session_memory, build_context
+from llm_provider import llm
 
 class MessageClassifier(BaseModel):
     message_type: Literal["emotional", "logical", "other"] = Field(
@@ -59,6 +57,7 @@ def router(state: State):
     
 
 def therapist_agent(state: State):
+    messages = state["message"]
     last_message = state["message"][-1]
     message = [
         {
@@ -77,11 +76,12 @@ def therapist_agent(state: State):
             "role": "user",
             "content": last_message.content
         }
-    ]
+    ] + messages
     response = llm.invoke(message)
     return {"message": [{"role": "assistant", "content": response.content}]}
 
 def engineer_agent(state: State):
+    messages = state["message"]
     last_message = state["message"][-1]
     message = [
         {
@@ -99,11 +99,12 @@ def engineer_agent(state: State):
             "role": "user",
             "content": last_message.content
         }
-    ]
+    ] + messages
     response = llm.invoke(message)
     return {"message": [{"role": "assistant", "content": response.content}]}
 
 def other_agent(state: State):
+    messages = state["message"]
     last_message = state["message"][-1]
     message = [
         {
@@ -119,7 +120,7 @@ def other_agent(state: State):
             "role": "user",
             "content": last_message.content
         }
-    ]
+    ] + messages
     response = llm.invoke(message)
     return {"message": [{"role": "assistant", "content": response.content}]}
 
@@ -174,14 +175,13 @@ def run_chatbot():
         if response.get("message") and len(response["message"]) > 0:
             last_message = response["message"][-1]
             print(f"Assistant: {last_message.content}")
-            
-from moderations import moderate_message
-from fastapi import FastAPI
+        
 
 app = FastAPI()
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str
 
 @app.get("/health")
 def health():
@@ -189,6 +189,16 @@ def health():
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+    session = get_session_memory(req.session_id)
+
+    session["messages"].append({"role": "user", "content": req.message})
+
+    profile_update = extract_user_info(req.message)
+    if profile_update.name:
+        session["profile"]["name"] = profile_update.name
+
+    context = build_context(session)
+
     # 🔴 INPUT MODERATION
     moderation_result = moderate_message(req.message)
     if not moderation_result.is_safe:
@@ -198,7 +208,8 @@ def chat(req: ChatRequest):
 
     # ✅ Normal flow
     response = graph.invoke({
-        "message": [{"role": "user", "content": req.message}]
+        #"message": [{"role": "user", "content": req.message}]
+        "message": context
     })
     
     bot_response = response["message"][-1].content
@@ -206,6 +217,9 @@ def chat(req: ChatRequest):
         return {
             "response": "⚠️ Bot response was flagged: "
         }
+    
+    session["messages"].append({"role": "assistant", "content": bot_response})
+
     return {"response": bot_response}
 
 if __name__ == "__main__":

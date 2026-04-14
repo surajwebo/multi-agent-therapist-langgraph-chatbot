@@ -67,6 +67,11 @@ for msg in st.session_state.messages:
 # --------- Input ---------
 user_input = st.chat_input("How are you feeling today?")
 
+import uuid
+
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
@@ -79,7 +84,7 @@ if user_input:
         try:
             response = requests.post(
                 "http://localhost:8000/chat",
-                json={"message": user_input},
+                json={"message": user_input, "session_id": st.session_state.session_id},
                 timeout=60
             )
             bot_reply = response.json()["response"]

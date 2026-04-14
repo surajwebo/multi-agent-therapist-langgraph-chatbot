@@ -1,14 +1,14 @@
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from main import llm
+from llm_provider import moderationllm
 
 class ModerationResult(BaseModel):
     is_safe: bool
     reason: str
 
 def moderate_message(message: str):
-    moderation_llm = llm.with_structured_output(ModerationResult)
+    moderation_llm = moderationllm.with_structured_output(ModerationResult)
     response = moderation_llm.invoke(
         [
             {
