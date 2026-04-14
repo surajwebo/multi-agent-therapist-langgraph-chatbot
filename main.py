@@ -1,5 +1,4 @@
 
-from dotenv import load_dotenv
 from typing import Annotated, Literal
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -7,9 +6,6 @@ from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 from typing import Optional
-
-
-load_dotenv()
 
 llm = init_chat_model(
     model="ollama:llama3", #"anthropic:claude-3-5-latest",
@@ -179,6 +175,7 @@ def run_chatbot():
             last_message = response["message"][-1]
             print(f"Assistant: {last_message.content}")
             
+from moderations import moderate_message
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -192,10 +189,24 @@ def health():
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+    # 🔴 INPUT MODERATION
+    moderation_result = moderate_message(req.message)
+    if not moderation_result.is_safe:
+        return {
+            "response": f"⚠️ Your message was flagged: {moderation_result.reason}"
+        }
+
+    # ✅ Normal flow
     response = graph.invoke({
         "message": [{"role": "user", "content": req.message}]
     })
-    return {"response": response["message"][-1].content}
+    
+    bot_response = response["message"][-1].content
+    if not moderate_message(bot_response):
+        return {
+            "response": "⚠️ Bot response was flagged: "
+        }
+    return {"response": bot_response}
 
 if __name__ == "__main__":
     # CLI mode (optional)
