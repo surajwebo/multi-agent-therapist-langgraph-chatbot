@@ -105,3 +105,9 @@ graph TD
 
 - **Output is evaluated:** 
   Once the output clears moderation, it is evaluated for quality, tone, and accuracy. For example, an evaluator verifies if the Therapist agent's response is sufficiently empathetic or if the Engineer agent's response is factually sound. If the output is evaluated as low quality, it can be sent back for refinement or regeneration before reaching the user. High-quality outputs are delivered as the final response.
+
+---
+
+## 4. Agent Routing Diagram
+
+![Agent Routing Diagram](./Image_graph.png)
