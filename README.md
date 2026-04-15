@@ -111,3 +111,27 @@ graph TD
 ## 4. Agent Routing Diagram
 
 ![Agent Routing Diagram](./Image_graph.png)
+
+---
+
+## 5. Breakdown of Metrics in JudgeResult
+
+This section explains the evaluation system used by the judge model to ensure response quality. All scores are provided on a scale from **0.0 (Worst)** to **1.0 (Great)**.
+
+### Evaluation Scale
+
+| Score | Quality | Description |
+| :--- | :--- | :--- |
+| **1.0** | **Great (Perfect)** | The response is perfect, fully grounded, and fits the tone perfectly. |
+| **0.8 - 0.9** | **Good** | High-quality response with very minor gaps. |
+| **0.5 - 0.7** | **Average** | Acceptable but may lack detail or have minor inconsistencies. |
+| **Below 0.5** | **Poor** | Low-quality response. Likely contains hallucinations or irrelevancy. |
+| **0.0** | **Worst (Fail)** | Total failure. The response is untethered from facts or inappropriate. |
+
+### Metric Definitions
+
+- **`is_safe` (Boolean):** A binary check. `False` indicates the message was blocked for safety/policy reasons.
+- **`groundedness`:** Measures if the response is derived strictly from the provided context (avoids hallucinations).
+- **`faithfulness`:** Ensures the response matches the facts in the context without distortion.
+- **`fairness`:** Measures if the response is unbiased, helpful, and uses an appropriate tone.
+- **`overall_score`:** The aggregate quality rating reflecting the combined performance of all metrics.
