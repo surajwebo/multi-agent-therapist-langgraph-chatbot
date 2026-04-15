@@ -70,3 +70,38 @@ The LangGraph architecture comprises a state machine with nodes and conditional 
    - `engineer_agent`: Prompted to act as a pure logical assistant. Gives concise, fact-based answers and specifically ignores emotional context.
    - `other_agent`: A fallback neutral assistant for general queries.
 5. **API Endpoints:** The graph is exposed directly via the FastAPI `/chat` endpoint, mapping incoming JSON payloads to graph invocations and returning the final generation to the frontend.
+
+---
+
+## 3. Architecture flow of app
+
+This section describes how user input is taken and processed by the LLM, including moderation and evaluation steps, to provide the final output to the user.
+
+```mermaid
+graph TD
+    A[User Input] --> B{Input Moderation}
+    B -- "Inappropriate (Blocked)" --> C[Moderation Rejection Message]
+    B -- "Safe" --> D[LLM Processing & LangGraph Routing]
+    
+    D --> E[Agent Response Generation]
+    
+    E --> F{Output Moderation}
+    F -- "Inappropriate (Blocked)" --> G[Moderation Rejection Message]
+    F -- "Safe" --> H{Output Evaluation}
+    
+    H -- "Low Quality / Inaccurate" --> I[Regenerate / Refine Output]
+    I --> F
+    
+    H -- "High Quality & Relevant" --> J[Final Output to User]
+```
+
+### Flow Cases
+
+- **Input is moderated:** 
+  Before the query reaches the main LLM agents, it passes through an input moderation layer. If the input contains harmful, toxic, or policy-violating content, it is blocked immediately. The user receives a standard moderation rejection message instead of an LLM-generated response.
+
+- **Output is moderated:** 
+  Even after a safe input is processed, the generated response from the AI agent is screened through an output moderation layer. If the LLM generates something inappropriate, unsafe, or off-policy, the system blocks it and returns a safe fallback or moderation message to the user.
+
+- **Output is evaluated:** 
+  Once the output clears moderation, it is evaluated for quality, tone, and accuracy. For example, an evaluator verifies if the Therapist agent's response is sufficiently empathetic or if the Engineer agent's response is factually sound. If the output is evaluated as low quality, it can be sent back for refinement or regeneration before reaching the user. High-quality outputs are delivered as the final response.
