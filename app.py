@@ -89,6 +89,21 @@ if user_input:
             )
             bot_reply = response.json()["response"]
 
+            #st.write(response.json())
+
+            data = response.json()
+
+            st.chat_message("assistant").write(data["response"])
+
+            # Show evaluation (collapsible)
+            with st.expander("📊 Evaluation Details"):
+                eval_data = data.get("evaluation", {})
+
+                st.write(f"Groundedness: {eval_data.get('groundedness')}")
+                st.write(f"Faithfulness: {eval_data.get('faithfulness')}")
+                st.write(f"Fairness: {eval_data.get('fairness')}")
+                st.write(f"Overall Score: {eval_data.get('overall_score')}")
+
         except Exception as e:
             bot_reply = "⚠️ Backend is not running. Please start FastAPI server."
 

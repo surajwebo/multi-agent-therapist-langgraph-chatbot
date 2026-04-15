@@ -11,3 +11,9 @@ moderationllm = init_chat_model(
     model="ollama:llama3",
     temperature=0
 )
+
+# separate judge model
+judge_llm = init_chat_model(
+    model="ollama:llama3", 
+    temperature=0
+)

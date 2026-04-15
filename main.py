@@ -10,6 +10,7 @@ from moderations import moderate_message
 from fastapi import FastAPI
 from context_handler import extract_user_info, get_session_memory, build_context
 from llm_provider import llm
+from evaluation import evaluate_output
 
 class MessageClassifier(BaseModel):
     message_type: Literal["emotional", "logical", "other"] = Field(
@@ -213,14 +214,23 @@ def chat(req: ChatRequest):
     })
     
     bot_response = response["message"][-1].content
-    if not moderate_message(bot_response):
+    moderation_result = moderate_message(bot_response)
+    if not moderation_result.is_safe:
         return {
-            "response": "⚠️ Bot response was flagged: "
+            "response": f"⚠️ Bot response was flagged: {moderation_result.reason}"
+        }
+
+
+    eval_result = evaluate_output(context, bot_response)
+
+    if not eval_result.is_safe:
+        return {
+            "response": "⚠️ Bot response was flagged: ", "reason": eval_result.safety_reason
         }
     
     session["messages"].append({"role": "assistant", "content": bot_response})
 
-    return {"response": bot_response}
+    return {"response": bot_response, "evaluation": eval_result.dict()}
 
 if __name__ == "__main__":
     # CLI mode (optional)
